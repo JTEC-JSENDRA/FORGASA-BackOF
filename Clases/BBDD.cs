@@ -308,6 +308,37 @@ namespace API_SAP.Clases
             }
         }
 
+        public async Task ActualizarOF(string OF, string nombreEtapa, string numeroEtapa)
+        {
+            string query = @"UPDATE OFs
+                            SET nombreEtapa = @nombreEtapa,
+                                numeroEtapa = @numeroEtapa
+                            WHERE ordenFabricacion = @OF";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@nombreEtapa", nombreEtapa);
+                    command.Parameters.AddWithValue("@numeroEtapa", numeroEtapa);
+                    command.Parameters.AddWithValue("@OF", OF);
+
+                    int filasAfectadas = await command.ExecuteNonQueryAsync();
+
+                    if (filasAfectadas == 0)
+                    {
+                        // No se encontró la OF
+                        Console.WriteLine("No se actualizó ninguna fila. Verifica que la OF exista.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Actualización exitosa.");
+                    }
+                }
+            }
+        }
+
         //Metodos de basquevolt
         public List<T> GetDatos<T>(string query)
         {

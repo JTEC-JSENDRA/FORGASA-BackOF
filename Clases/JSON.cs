@@ -82,7 +82,7 @@ namespace GestionRecetas.Clases
                         ["tipo"] = "Carga_Solidos_2",
                         ["consigna"] = "Cantidad",
                         ["valor"] = 3.0,
-                        ["procesoActivo"] = true
+                        ["procesoActivo"] = false
                     },
                     new JObject
                     {
@@ -100,7 +100,7 @@ namespace GestionRecetas.Clases
                         ["tipo"] = "Carga_Solidos_3",
                         ["consigna"] = "Cantidad",
                         ["valor"] = 5.0,
-                        ["procesoActivo"] = true
+                        ["procesoActivo"] = false
                     },
                     new JObject
                     {
@@ -129,7 +129,7 @@ namespace GestionRecetas.Clases
                         ["tipo"] = "Carga_Agua_Recup",
                         ["consigna"] = "Cantidad",
                         ["valor"] = 8.0,
-                        ["procesoActivo"] = true
+                        ["procesoActivo"] = false
                     }
                 });
                     etapa.Add(new JArray
@@ -162,7 +162,7 @@ namespace GestionRecetas.Clases
                         ["tipo"] = "Carga_Potasa",
                         ["consigna"] = "Cantidad",
                         ["valor"] = 11.0,
-                        ["procesoActivo"] = true
+                        ["procesoActivo"] = false
                     }
                 });
                     etapa.Add(new JArray
@@ -172,8 +172,8 @@ namespace GestionRecetas.Clases
                         ["id"] = 0,
                         ["tipo"] = "Espera",
                         ["consigna"] = "Tiempo",
-                        ["valor"] = 12,
-                        ["procesoActivo"] = false
+                        ["valor"] = 60,
+                        ["procesoActivo"] = true
                     }
                 });
                     // Procesos secundarios vacíos
@@ -231,7 +231,7 @@ namespace GestionRecetas.Clases
                         ["tipo"] = "Temperatura",
                         ["consigna"] = "Temperatura",
                         ["valor"] = 19,
-                        ["procesoActivo"] = false
+                        ["procesoActivo"] = true
                 }
                 }); 
 

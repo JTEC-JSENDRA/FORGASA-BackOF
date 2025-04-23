@@ -73,14 +73,28 @@ namespace API_SAP.Controllers
             // Llamamos a la función para transformar los datos
             JArray resultado = JSON.TransformarJson(jsonArray);
 
-            Console.WriteLine($"Tipo de resultado: {resultado.GetType()}");
+            //Console.WriteLine($"Tipo de resultado: {resultado.GetType()}");
 
             var jsonString = JsonConvert.SerializeObject(resultado, Formatting.Indented);
-            Console.WriteLine($"JSON String: {jsonString}");
+            //Console.WriteLine($"JSON String: {jsonString}");
 
             return Ok(jsonString);
         }
 
+        [HttpPost("ActualizarOF")]
+        ///api/Worker/ActualizarOF?OF=1259353&nombreEtapa=Primera&numeroEtapa=4/5
+        public async Task<IActionResult> Post([FromBody] OFRequest request)
+        {
+            SQLServerManager BBDD = BBDD_Config();
+            await BBDD.ActualizarOF(request.OF, request.nombreEtapa, request.numeroEtapa);
+            return Ok();
+        }
 
+        public class OFRequest
+        {
+            public string OF { get; set; }
+            public string nombreEtapa { get; set; }
+            public string numeroEtapa { get; set; }
+        }
     }
 }
