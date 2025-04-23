@@ -85,6 +85,12 @@ namespace API_SAP.Controllers
         ///api/Worker/ActualizarOF?OF=1259353&nombreEtapa=Primera&numeroEtapa=4/5
         public async Task<IActionResult> Post([FromBody] OFRequest request)
         {
+            if (request == null)
+            {
+                Console.WriteLine("⚠️ request = null");
+                return BadRequest("El modelo no se pudo deserializar.");
+            }
+
             SQLServerManager BBDD = BBDD_Config();
             await BBDD.ActualizarOF(request.OF, request.nombreEtapa, request.numeroEtapa);
             return Ok();
