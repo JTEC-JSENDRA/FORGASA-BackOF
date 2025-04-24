@@ -81,6 +81,13 @@ namespace API_SAP.Controllers
             return Ok(jsonString);
         }
 
+        public class OFRequest
+        {
+            public string OF { get; set; }
+            public string nombreEtapa { get; set; }
+            public string numeroEtapa { get; set; }
+        }
+
         [HttpPost("ActualizarOF")]
         ///api/Worker/ActualizarOF?OF=1259353&nombreEtapa=Primera&numeroEtapa=4/5
         public async Task<IActionResult> Post([FromBody] OFRequest request)
@@ -96,11 +103,18 @@ namespace API_SAP.Controllers
             return Ok();
         }
 
-        public class OFRequest
+        public class OFRequestFinalizar
         {
             public string OF { get; set; }
-            public string nombreEtapa { get; set; }
-            public string numeroEtapa { get; set; }
+            public string estado { get; set; }
+        }
+
+        [HttpPost("FinalizarOF")]
+        public async Task<IActionResult> PostFinalizarOF([FromBody] OFRequestFinalizar request)
+        {
+            SQLServerManager BBDD = BBDD_Config();
+            await BBDD.FinalizarOF(request.OF, request.estado);
+            return Ok();
         }
     }
 }

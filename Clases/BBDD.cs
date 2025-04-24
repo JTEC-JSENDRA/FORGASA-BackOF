@@ -333,12 +333,42 @@ namespace API_SAP.Clases
                     }
                     else
                     {
-                        Console.WriteLine("Actualización exitosa.");
+                        Console.WriteLine("Actualización de etapa exitosa.");
                     }
                 }
             }
         }
 
+        public async Task FinalizarOF(string OF, string estado)
+        {
+            string query = @"UPDATE OFs
+                            SET status = @estado
+                            WHERE ordenFabricacion = @OF";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@OF", OF);
+                    command.Parameters.AddWithValue("@estado", estado);
+
+                    int filasAfectadas = await command.ExecuteNonQueryAsync();
+
+                    if (filasAfectadas == 0)
+                    {
+                        // No se encontró la OF
+                        Console.WriteLine("No se actualizó el estado. Verifica que la OF exista.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Actualización de status de OF exitosa.");
+                    }
+                }
+            }
+        }
+
+        #region Basquevolt
         //Metodos de basquevolt
         public List<T> GetDatos<T>(string query)
         {
@@ -459,5 +489,6 @@ namespace API_SAP.Clases
 
             return ListadoRecetas;
         }
+        #endregion
     }
 }
