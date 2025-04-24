@@ -214,7 +214,7 @@ namespace API_SAP.Clases
             List<JObject> jsonObjectList = new List<JObject>();
 
             //string query = "SELECT FechaInicio, OrdenFabricacion AS OF, Descripcion, Receta, Version, Destino, NombreEtapa AS Etapa, NumeroEtapa, Status AS Estado FROM OFs WHERE Status != 'Liberada'";
-            string query = "SELECT * FROM OFs WHERE status != 'Liberada'";
+            string query = "SELECT * FROM OFs WHERE status = 'Lanzada'";
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -228,7 +228,7 @@ namespace API_SAP.Clases
 
                     while (await reader.ReadAsync())
                     {
-                        if ((string?)reader["status"] != "Liberada")
+                        if ((string?)reader["status"] == "Lanzada")
                         {
                             JObject jsonObject = new JObject();
                             jsonObject["fechaInicio"] = (DateTime?)(reader["fechaInicio"] is DBNull ? null : reader["fechaInicio"]);
@@ -342,7 +342,8 @@ namespace API_SAP.Clases
         public async Task FinalizarOF(string OF, string estado)
         {
             string query = @"UPDATE OFs
-                            SET status = @estado
+                            SET status = @estado,
+                            fechaFin = GETDATE()
                             WHERE ordenFabricacion = @OF";
 
             using (SqlConnection connection = new SqlConnection(connectionString))

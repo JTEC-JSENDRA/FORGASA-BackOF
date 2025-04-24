@@ -73,10 +73,7 @@ namespace API_SAP.Controllers
             // Llamamos a la función para transformar los datos
             JArray resultado = JSON.TransformarJson(jsonArray);
 
-            //Console.WriteLine($"Tipo de resultado: {resultado.GetType()}");
-
             var jsonString = JsonConvert.SerializeObject(resultado, Formatting.Indented);
-            //Console.WriteLine($"JSON String: {jsonString}");
 
             return Ok(jsonString);
         }
@@ -89,7 +86,6 @@ namespace API_SAP.Controllers
         }
 
         [HttpPost("ActualizarOF")]
-        ///api/Worker/ActualizarOF?OF=1259353&nombreEtapa=Primera&numeroEtapa=4/5
         public async Task<IActionResult> Post([FromBody] OFRequest request)
         {
             if (request == null)
