@@ -180,6 +180,7 @@ namespace API_SAP.Clases
             int version = Convert.ToInt32(Datos["GMDix"]["version"]);
             string destino = Datos["GMDix"]["nombreReactor"].ToString();
             string nombreEtapa = "Nombreprueba";
+            var itemsComponentes = Datos["COMPONENTES"]["item"];
 
             int ordenFabricacion = Convert.ToInt32(Datos["AUFNR"]);
 
@@ -194,6 +195,54 @@ namespace API_SAP.Clases
                                   numeroEtapa = '0/' + CAST((SELECT numeroEtapas FROM Recetas WHERE nombreReceta LIKE '{receta}' AND version LIKE {version}) AS NVARCHAR(MAX))
                               WHERE ordenFabricacion = {ordenFabricacion}";
 
+            if (itemsComponentes is JArray itemsArray)
+            {
+                foreach (var item in itemsArray)
+                {
+                    var materiaPrima = item["MAKTX"].ToString();
+                    var cantidad = item["BDMNG"];
+                    var ud = item["MEINS"].ToString();
+
+                    string queryInsert = @$"
+                                INSERT INTO Materiales (ordenFabricacion, materiaPrima, cantidad, ud, fechaLanzada)
+                                VALUES ({ordenFabricacion}, '{materiaPrima}', '{cantidad}', '{ud}', GETDATE())";
+
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        await connection.OpenAsync();
+                                               
+                        using (SqlCommand commandInsertar = new SqlCommand(queryInsert, connection))
+                        {
+                            await commandInsertar.ExecuteNonQueryAsync();
+                        }
+
+                        await connection.CloseAsync();
+                    }
+                }
+            }
+            else
+            {
+                var materiaPrima = itemsComponentes["MAKTX"].ToString();
+                var cantidad = itemsComponentes["BDMNG"];
+                var ud = itemsComponentes["MEINS"].ToString();
+
+                string queryInsert = @$"
+                                INSERT INTO Materiales (ordenFabricacion, materiaPrima, cantidad, ud, fechaLanzada)
+                                VALUES ({ordenFabricacion}, '{materiaPrima}', '{cantidad}', '{ud}', GETDATE())";
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    using (SqlCommand commandInsertar = new SqlCommand(queryInsert, connection))
+                    {
+                        await commandInsertar.ExecuteNonQueryAsync();
+                    }
+
+                    await connection.CloseAsync();
+                }
+            }
+            
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
