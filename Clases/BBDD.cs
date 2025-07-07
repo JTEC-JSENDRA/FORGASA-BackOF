@@ -1,8 +1,10 @@
 ﻿using GestionRecetas.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Data;
 using System.Data.SqlClient;
+using System.Drawing;
 using System.Reflection;
 
 
@@ -179,7 +181,7 @@ namespace API_SAP.Clases
             string receta = Datos["GMDix"]["nombreReceta"].ToString();
             int version = Convert.ToInt32(Datos["GMDix"]["version"]);
             string destino = Datos["GMDix"]["nombreReactor"].ToString();
-            string nombreEtapa = "Nombreprueba";
+            string nombreEtapa = "Cargando Datos Receta...";
             var itemsComponentes = Datos["COMPONENTES"]["item"];
 
             int ordenFabricacion = Convert.ToInt32(Datos["AUFNR"]);
@@ -267,6 +269,8 @@ namespace API_SAP.Clases
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
+                //Console.WriteLine("Connection String: " + connection.ConnectionString);
+
                 await connection.OpenAsync();
 
                 SqlCommand command = new SqlCommand(query, connection);
@@ -278,6 +282,8 @@ namespace API_SAP.Clases
                     while (await reader.ReadAsync())
                     {
                         if ((string?)reader["status"] == "Lanzada")
+
+                        
                         {
                             JObject jsonObject = new JObject();
                             jsonObject["fechaInicio"] = (DateTime?)(reader["fechaInicio"] is DBNull ? null : reader["fechaInicio"]);
@@ -359,6 +365,7 @@ namespace API_SAP.Clases
 
         public async Task ActualizarOF(string OF, string nombreEtapa, string numeroEtapa)
         {
+            
             string query = @"UPDATE OFs
                             SET nombreEtapa = @nombreEtapa,
                                 numeroEtapa = @numeroEtapa
@@ -382,7 +389,7 @@ namespace API_SAP.Clases
                     }
                     else
                     {
-                        Console.WriteLine("Actualización de etapa exitosa.");
+                        //Console.WriteLine("Actualización de etapa exitosa.");
                     }
                 }
             }
@@ -412,11 +419,537 @@ namespace API_SAP.Clases
                     }
                     else
                     {
-                        Console.WriteLine("Actualización de status de OF exitosa.");
+                        //Console.WriteLine("Actualización de status de OF exitosa.");
                     }
                 }
             }
         }
+
+        public async Task InsertarMaterial(int i_count, string Nombre, string Operacion, string PuestoTrabajo)
+        {
+            string query_InsertMat = @"INSERT INTO Materias (ID, Nombre, Operacion, PuestoTrabajo)
+                               VALUES (@ID, @Nombre, @Operacion, @PuestoTrabajo)";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                using (SqlCommand command = new SqlCommand(query_InsertMat, connection))
+                {
+                    // Agregamos los parámetros reales que sí están en la consulta
+                    command.Parameters.AddWithValue("@ID", i_count);
+                    command.Parameters.AddWithValue("@Nombre", Nombre);
+                    command.Parameters.AddWithValue("@Operacion", Operacion);
+                    command.Parameters.AddWithValue("@PuestoTrabajo", PuestoTrabajo);
+
+                    int filasAfectadas = await command.ExecuteNonQueryAsync();
+
+                    if (filasAfectadas == 0)
+                    {
+                        Console.WriteLine("No se insertó ningún material.");
+                    }
+                    else
+                    {
+                        //Console.WriteLine("Inserción de material exitosa.");
+                    }
+                }
+            }
+        }
+
+        public async Task<bool> ExisteMaterial(string material)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = "SELECT COUNT(*) FROM Materias WHERE Nombre = @material";
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@material", material);
+
+                int count = (int)await command.ExecuteScalarAsync();
+
+                return count > 0;
+            }
+        }
+
+        public async Task EliminarTodosLosMateriales()
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = "DELETE FROM Materias"; // o TRUNCATE TABLE Materias si no hay FK
+                SqlCommand cmd = new SqlCommand(query, connection);
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+
+        public async Task<decimal?> ExtraerValorMMPP(int? ID_Receta, int N_Etapa, decimal MMPP)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                //Console.WriteLine($"Conexión abierta. Buscando MateriaPrima para ID_Receta={ID_Receta}, N_Etapa={N_Etapa}, MMPP={MMPP}");
+                // Verificamos si existe la fila con MateriaPrima
+                string query_found = @"SELECT 1
+                               FROM ProcesoPrincipal
+                               WHERE ID_Receta = @ID_Receta
+                                 AND N_Etapa = @N_Etapa
+                                 AND Consigna = 'MateriaPrima'
+                                 AND Valor = @MMPP;";
+
+                //Console.WriteLine($"Query de seleccion: {query_found}");
+
+                using (SqlCommand checkCommand = new SqlCommand(query_found, connection))
+                {
+                    checkCommand.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                    checkCommand.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+                    checkCommand.Parameters.AddWithValue("@MMPP", MMPP);
+
+                    var exists = await checkCommand.ExecuteScalarAsync();
+
+                    if (exists != null)
+                    {
+                        //Console.WriteLine("MateriaPrima encontrada. Buscando valor siguiente (Cantidad)...");
+                        // Si existe, obtenemos el valor de la siguiente fila (Cantidad)
+                        string query = @"SELECT siguiente.Valor
+                                 FROM ProcesoPrincipal actual
+                                 JOIN ProcesoPrincipal siguiente ON siguiente.ID = actual.ID + 1
+                                 WHERE actual.Consigna = 'MateriaPrima'
+                                   AND actual.Valor = @MMPP
+                                   AND siguiente.Consigna = 'Cantidad'
+                                   AND actual.ID_Receta = @ID_Receta
+                                   AND actual.N_Etapa = @N_Etapa;";
+
+                        //Console.WriteLine($"Query de Inserccion: {query}");
+
+                        using (SqlCommand command = new SqlCommand(query, connection))
+                        {
+                            command.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                            command.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+                            command.Parameters.AddWithValue("@MMPP", MMPP);
+
+                            var result = await command.ExecuteScalarAsync();
+
+                            if (result != null && decimal.TryParse(result.ToString(), out decimal valorCantidad))
+                            {
+                                //Console.WriteLine($"Valor Cantidad encontrado: {valorCantidad}");
+                                return valorCantidad;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //Console.WriteLine("No se encontró Materia Prima.");
+                    }
+
+                    return null;
+                }
+            }
+        }
+
+        public async Task<decimal?> ExtraerValorTIEMPO(int? ID_Receta, int N_Etapa)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                //Console.WriteLine($"Conexión abierta. Buscando MateriaPrima para ID_Receta={ID_Receta}, N_Etapa={N_Etapa}");
+                // Verificamos si existe la fila con MateriaPrima
+                string query_found = @"SELECT 1
+                               FROM ProcesoPrincipal
+                               WHERE ID_Receta = @ID_Receta
+                                 AND N_Etapa = @N_Etapa
+                                 AND Consigna = 'Tiempo';
+                                 ";
+
+                //Console.WriteLine($"Query de seleccion: {query_found}");
+
+                using (SqlCommand checkCommand = new SqlCommand(query_found, connection))
+                {
+                    checkCommand.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                    checkCommand.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+                    
+                    var exists = await checkCommand.ExecuteScalarAsync();
+
+                    if (exists != null)
+                    {
+                        //Console.WriteLine("MateriaPrima encontrada. Buscando valor siguiente (Cantidad)...");
+                        // Si existe, obtenemos el valor de la siguiente fila (Cantidad)
+                        string query = @"SELECT valor
+                                 FROM ProcesoPrincipal 
+                                   WHERE Consigna = 'Tiempo'
+                                   AND ID_Receta = @ID_Receta
+                                   AND N_Etapa = @N_Etapa;";
+
+                        //Console.WriteLine($"Query de Inserccion: {query}");
+
+                        using (SqlCommand command = new SqlCommand(query, connection))
+                        {
+                            command.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                            command.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+                            
+                            var result = await command.ExecuteScalarAsync();
+
+                            if (result != null && decimal.TryParse(result.ToString(), out decimal valorCantidad))
+                            {
+                                //Console.WriteLine($"Valor Cantidad encontrado: {valorCantidad}");
+                                return valorCantidad;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //Console.WriteLine("No se encontró Materia Prima.");
+                    }
+
+                    return null;
+                }
+            }
+        }
+        
+        public async Task<decimal?> ExtraerOperario(int? ID_Receta, int N_Etapa)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                //Console.WriteLine($"🔍 Buscando 'Operador' para ID_Receta={ID_Receta}, N_Etapa={N_Etapa}");
+
+                string query = @"
+                                SELECT 1
+                                FROM ProcesoPrincipal
+                                WHERE ID_Receta = @ID_Receta
+                                  AND N_Etapa = @N_Etapa
+                                  AND Tipo = 'Operador';
+                            ";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                    command.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+
+                    var result = await command.ExecuteScalarAsync();
+
+                    if (result != null && decimal.TryParse(result.ToString(), out decimal valor))
+                    {
+                        //Console.WriteLine($"✅ Valor encontrado: {valor}");
+                        return valor;
+                    }
+                    else
+                    {
+                        //Console.WriteLine("⚠️ No se encontró el valor del operador.");
+                        return null;
+                    }
+                }
+            }
+        }
+
+
+        public async Task<decimal?> ExtraerAgitacion(int? ID_Receta, int N_Etapa,string Consigna)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                               
+                string query = @"
+                                SELECT Valor
+                                FROM ProcesoAgitacion
+                                WHERE ID_Receta = @ID_Receta
+                                  AND N_Etapa = @N_Etapa
+                                  AND Tipo = 'Agitacion'
+                                  AND Consigna = @Consigna;
+                            ";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                    command.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+                    command.Parameters.AddWithValue("@Consigna", Consigna);
+
+                    var result = await command.ExecuteScalarAsync();
+
+                    if (result != null && decimal.TryParse(result.ToString(), out decimal valor))
+                    {
+                        //Console.WriteLine($"✅ Valor encontrado: {valor}");
+                        return valor;
+                    }
+                    else
+                    {
+                        //Console.WriteLine("⚠️ No se encontró el valor del operador.");
+                        return null;
+                    }
+                }
+            }
+        }
+
+        public async Task<decimal?> ExtraerTemperatura(int? ID_Receta, int N_Etapa, string Consigna)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = @"
+                                SELECT Valor
+                                FROM ProcesoTemperatura
+                                WHERE ID_Receta = @ID_Receta
+                                  AND N_Etapa = @N_Etapa
+                                  AND Tipo = 'Temperatura'
+                                  AND Consigna = @Consigna;
+                            ";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+                    command.Parameters.AddWithValue("@N_Etapa", N_Etapa);
+                    command.Parameters.AddWithValue("@Consigna", Consigna);
+
+                    var result = await command.ExecuteScalarAsync();
+
+                    if (result != null && decimal.TryParse(result.ToString(), out decimal valor))
+                    {
+                        //Console.WriteLine($"✅ Valor encontrado: {valor}");
+                        return valor;
+                    }
+                    else
+                    {
+                        //Console.WriteLine("⚠️ No se encontró el valor del operador.");
+                        return null;
+                    }
+                }
+            }
+        }
+
+        public async Task<int?> ObtenerIDReceta(string NombreReceta)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = @"
+                        SELECT ID
+                        FROM Recetas
+                        WHERE NombreReceta = @NombreReceta;
+                        ";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@NombreReceta", NombreReceta);
+
+                    var result = await command.ExecuteScalarAsync();
+
+                    if (result != null && int.TryParse(result.ToString(), out int id))
+                    {
+                        return id;
+                    }
+                    else
+                    {
+                        //Console.WriteLine("⚠️ No se encontró el valor del operador.");
+                        return null;
+                    }
+                }
+            }
+        }
+
+        public async Task<List<string>> ObtenerOFLanzadas()
+        {
+            var listaOFs = new List<string>();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = @"
+                        SELECT DISTINCT OrdenFabricacion
+                        FROM OFs
+                        WHERE Status = 'Lanzada'";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        string orden = reader[0]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(orden))
+                        {
+                            listaOFs.Add(orden);
+                        }
+                    }
+                }
+            }
+
+            return listaOFs;
+        }
+
+        public async Task<List<Dictionary<string, object>>> ObtenerMateriasPrimas(string query)
+        {
+            var listaMaterias = new List<Dictionary<string, object>>();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var dict = new Dictionary<string, object>
+                        {
+                            ["materiaPrima"] = reader["materiaPrima"],
+                            ["cantidad"] = reader["cantidad"]
+                        };
+                        listaMaterias.Add(dict);
+                    }
+                }
+            }
+
+            return listaMaterias;
+        }
+
+        public async Task<Dictionary<string, string>> ObtenerMateriasPrimasReales(string ordenFabricacion)
+        {
+            var resultado = new Dictionary<string, string>();
+
+            string query = $@"
+                        SELECT solido1, solido2, solido3, Agua, AguaRecu, Antiespumante, Ligno, potasa
+                        FROM datosRealesMMPP
+                        WHERE ordenFabricacion = @ordenFabricacion";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ordenFabricacion", ordenFabricacion);
+
+                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            resultado["lc70"] = reader["solido1"].ToString();
+                            resultado["lc80"] = reader["solido2"].ToString();
+                            resultado["hl26"] = reader["solido3"].ToString();
+                            resultado["agua"] = reader["Agua"].ToString();
+                            resultado["aguaRecuperada"] = reader["AguaRecu"].ToString();
+                            resultado["antiespumante"] = reader["Antiespumante"].ToString();
+                            resultado["ligno"] = reader["Ligno"].ToString();
+                            resultado["potasa"] = reader["potasa"].ToString();
+                        }
+                    }
+                }
+            }
+
+            return resultado;
+        }
+
+        public async Task<string> ExtraerNombreEtapa(int? ID_Receta, int ID_Etapa)
+        {
+            string Nombre_Etapa = null;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = @"
+                                SELECT Nombre
+                                FROM Etapas
+                                WHERE N_Etapa = @ID_Etapa
+                                  AND ID_Receta = @ID_Receta";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@ID_Etapa", ID_Etapa);
+                    command.Parameters.AddWithValue("@ID_Receta", ID_Receta);
+
+                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            Nombre_Etapa = reader["Nombre"]?.ToString();
+                        }
+                    }
+                }
+            }
+
+            return Nombre_Etapa;
+        }
+
+        public async Task<Models.MMPPFinal> ObtenerMMPPFinales(string OF)
+        {
+            Models.MMPPFinal resultado = null;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = @"
+                            SELECT TOP 1 *
+                            FROM MMPP_Finales
+                            WHERE OrdenFabricacion = @OF";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("@OF", OF);
+
+                    using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            resultado = new Models.MMPPFinal
+                            {
+                                OrdenFabricacion = reader["OrdenFabricacion"].ToString(),
+                                FechaInsercion = Convert.ToDateTime(reader["FechaInsercion"]),
+                                Solidos_1_CT = Convert.ToInt32(reader["Solidos_1_CT"]),
+                                Solidos_1_CR = Convert.ToInt32(reader["Solidos_1_CR"]),
+                                Solidos_2_CT = Convert.ToInt32(reader["Solidos_2_CT"]),
+                                Solidos_2_CR = Convert.ToInt32(reader["Solidos_2_CR"]),
+                                Solidos_3_CT = Convert.ToInt32(reader["Solidos_3_CT"]),
+                                Solidos_3_CR = Convert.ToInt32(reader["Solidos_3_CR"]),
+                                Agua_CT = Convert.ToInt32(reader["Agua_CT"]),
+                                Agua_CR = Convert.ToInt32(reader["Agua_CR"]),
+                                Agua_Recu_CT = Convert.ToInt32(reader["Agua_Recu_CT"]),
+                                Agua_Recu_CR = Convert.ToInt32(reader["Agua_Recu_CR"]),
+                                Antiespumante_CT = Convert.ToInt32(reader["Antiespumante_CT"]),
+                                Antiespumante_CR = Convert.ToInt32(reader["Antiespumante_CR"]),
+                                Ligno_CT = Convert.ToInt32(reader["Ligno_CT"]),
+                                Ligno_CR = Convert.ToInt32(reader["Ligno_CR"]),
+                                Potasa_CT = Convert.ToInt32(reader["Potasa_CT"]),
+                                Potasa_CR = Convert.ToInt32(reader["Potasa_CR"])
+                            };
+                        }
+                    }
+                }
+            }
+
+            return resultado;
+        }
+
+        public async Task<string> ExtraerOFFinalizadas()
+        {
+            List<string> ordenes = new List<string>();
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+
+                string query = @"SELECT OrdenFabricacion FROM MMPP_Finales;";
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        string of = reader["OrdenFabricacion"].ToString();
+                        ordenes.Add(of);
+                    }
+                }
+            }
+
+            // Serializar a JSON (necesitas using Newtonsoft.Json;)
+            return JsonConvert.SerializeObject(ordenes);
+        }
+
 
         #region Basquevolt
         //Metodos de basquevolt

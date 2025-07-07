@@ -43,6 +43,8 @@ namespace API_SAP.Controllers
 
             var algunaLanzada = await BBDD.RevisarLazadas(nombreReactor);
 
+            //Console.WriteLine($"Alguna Lanzada: {JsonConvert.SerializeObject(algunaLanzada)}");
+
             // Si algunaLanzada es una lista de diccionarios con un "Existe": false, devolver false
             if (algunaLanzada is List<Dictionary<string, object>> listaDict &&
                 listaDict.Count > 0 &&
@@ -71,9 +73,12 @@ namespace API_SAP.Controllers
             }
 
             // Llamamos a la función para transformar los datos
-            JArray resultado = JSON.TransformarJson(jsonArray);
+            JArray resultado = await JSON.TransformarJson(jsonArray,BBDD);
 
             var jsonString = JsonConvert.SerializeObject(resultado, Formatting.Indented);
+
+
+            //Console.WriteLine($"Este es mi Json Result: {jsonString}");
 
             return Ok(jsonString);
         }
@@ -94,6 +99,10 @@ namespace API_SAP.Controllers
                 return BadRequest("El modelo no se pudo deserializar.");
             }
 
+            //Console.WriteLine($"¬ OF: {request.OF}");
+            //Console.WriteLine($"X nombreEtapa: {request.nombreEtapa}");
+            //Console.WriteLine($"🔵 numeroEtapa: {request.numeroEtapa}");
+
             SQLServerManager BBDD = BBDD_Config();
             await BBDD.ActualizarOF(request.OF, request.nombreEtapa, request.numeroEtapa);
             return Ok();
@@ -101,10 +110,10 @@ namespace API_SAP.Controllers
 
         public class OFRequestFinalizar
         {
-            public string OF { get; set; }
+            public string OF { get; set; } 
             public string estado { get; set; }
         }
-
+         
         [HttpPost("FinalizarOF")]
         public async Task<IActionResult> PostFinalizarOF([FromBody] OFRequestFinalizar request)
         {
