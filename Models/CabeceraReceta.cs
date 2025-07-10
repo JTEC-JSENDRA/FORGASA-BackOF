@@ -7,7 +7,6 @@ namespace GestionRecetas.Models
     {
         public int ID { get; set; }
         public string? NombreReceta { get; set; }
-
         public string? NombreReactor { get; set; }
 
         public short NumeroEtapas { get; set; }

@@ -20,6 +20,8 @@ namespace API_SAP.Controllers
     [ApiController]
     public class LiberadasController : ControllerBase
     {
+        // ---------------------------------------------------------------------------------------------------------------------------
+
         private SQLServerManager BBDD_Config()
         {
             string nombreServidor = Environment.MachineName;
@@ -32,11 +34,13 @@ namespace API_SAP.Controllers
             return new SQLServerManager(connectionString);
         }
 
+        // ---------------------------------------------------------------------------------------------------------------------------
+
+        // API ENCARGADA DE DESCARGAR EL ARCHIVO DE SAP -> AHORA MISMO TRABAJANDO DESDE ARCHIVO SAP LOCAL 
 
         [HttpGet("SAP/{Centro}")]
         public async Task<string> Get_SAP(string Centro = "FO01")
         {
-            //Console.WriteLine("[$DEBUG]:INICIAO API SAP");
 
             string urlServicio = "http://SAPPRD.samca.net:8001/sap/bc/srt/rfc/sap/zmes_ws_ofs/010/zmes_ws_ofs/zmes_bn_ofs"; //datos
 
@@ -53,9 +57,12 @@ namespace API_SAP.Controllers
                     </soapenv:Body>
                 </soapenv:Envelope>";
 
-            //Console.WriteLine(xmlSolicitud);
+            // ---------------- CUANTO SE HABILITE SAP HAY QUE COMENTAR ESTAS LÍNEAS
+
             string soapResponse;
             string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE_TEST.xml";
+
+            // ---------------- CUANTO SE HABILITE SAP HAY QUE DESCOMENTAR ESTAS LÍNEAS
 
             //// Configurar cliente HttpClient
             //using (HttpClient httpClient = new HttpClient())
@@ -90,81 +97,31 @@ namespace API_SAP.Controllers
             //        Console.WriteLine($"Error al guardar el archivo: {ex.Message}");
             //    }
             //}
-            //Console.WriteLine("[$DEBUG]:FIN API SAP");
+            
 
             return null;
         }
 
+        // ---------------------------------------------------------------------------------------------------------------------------
 
+        // -- GET api/<SAPController>/5
+        // -- Se utiliza para leer datos de producción desde un archivo XML generado por SAP
 
-
-        // GET api/<SAPController>/5
         [HttpGet("{Centro}")]
         public async Task<string> Get(string Centro = "FO01")
         {
-            //Console.WriteLine("Debug 10");
+            // Configura la conexión a la base de datos
+            SQLServerManager BBDD = BBDD_Config();
 
-            SQLServerManager BBDD = BBDD_Config(); 
-            //Console.WriteLine("[$DEBUG]:INICIAO API RELOAD");
-
-            /*
-            string urlServicio = "http://SAPPRD.samca.net:8001/sap/bc/srt/rfc/sap/zmes_ws_ofs/010/zmes_ws_ofs/zmes_bn_ofs"; //datos
-
-            string xmlSolicitud = @$"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:urn=""urn:sap-com:document:sap:rfc:functions"">
-                    <soapenv:Header/>
-                    <soapenv:Body>
-                        <urn:ZMES_GET_OFS>
-                            <IV_CENTRO>{Centro}</IV_CENTRO>
-                            <!--Optional:-->
-                            <IV_MATERIAL></IV_MATERIAL>
-                            <!--Optional:-->
-                            <IV_PUESTO></IV_PUESTO>
-                        </urn:ZMES_GET_OFS>
-                    </soapenv:Body>
-                </soapenv:Envelope>";
-
-            //Console.WriteLine(xmlSolicitud);
-            string soapResponse;
-            */
+            // Ruta local del archivo XML descargado de SAP 
             string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE_TEST.xml";
 
-            //// Configurar cliente HttpClient
-            //using (HttpClient httpClient = new HttpClient())
-            //{
-            //    httpClient.DefaultRequestHeaders.Add("SOAPAction", "urn:sap-com:document:sap:rfc:functions:ZMES_GET_OFS");
-            //    httpClient.DefaultRequestHeaders.Add("Accept", "text/xml");
-
-            //    // Configurar el contenido de la solicitud SOAP
-            //    var content = new StringContent(xmlSolicitud, Encoding.UTF8, "text/xml");
-
-            //    // Enviar solicitud POST al servicio web SOAP
-            //    HttpResponseMessage response = await httpClient.PostAsync(urlServicio, content);
-
-            //    // Leer la respuesta SOAP
-            //    soapResponse = await response.Content.ReadAsStringAsync();
-
-            //    // Mostrar la respuesta en la consola
-            //    //Console.WriteLine("Respuesta de la API SOAP:");
-            //    //Console.WriteLine(soapResponse);
-
-            //    try
-            //    {
-            //        rutaXML = @"C:\ZMES_GET_OFS_RESPONSE.xml";
-
-            //        // Guarda el contenido XML en el archivo
-            //        System.IO.File.WriteAllText(rutaXML, soapResponse);
-
-            //        Console.WriteLine($"Archivo guardado correctamente en: {rutaXML}");
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Console.WriteLine($"Error al guardar el archivo: {ex.Message}");
-            //    }
-            //}
-
+            // Crea un nuevo documento XML donde cargaremos el archivo
             XmlDocument xmlDoc = new XmlDocument();
+
             try
             {
+                // Verificamos si la carpeta que contiene el archivo existe
                 var dirInfo = new DirectoryInfo(Path.GetDirectoryName(rutaXML));
                 if (dirInfo.Exists)
                 {
@@ -174,74 +131,71 @@ namespace API_SAP.Controllers
                 {
                     Console.WriteLine("La carpeta NO existe");
                 }
-                // =================================================================================================================
+
+                // ====================== Como hemos descargado anteriormente el documento de SAP, aqui solo tenemos que leerlo ====================
 
                 //Para funcionar leyendo de la apiSOAP
                 //xmlDoc.LoadXml(soapResponse); // Cargar contenido de la respuesta de la peticion de datos a la api soap
-
                 Console.WriteLine(rutaXML);
                 
                 //Para funcionar leyendo el archivo guardado
                 xmlDoc.Load(rutaXML);
 
                 // =================================================================================================================
+
                 Console.WriteLine("XML cargado correctamente.");
 
             }
             catch (Exception ex)
             {
+                // En caso de error al leer el archivo
                 Console.WriteLine($"Error al cargar XML: {ex.Message}");
             }
 
-            // Convertir XML a JSON
+            // Convertimos el contenido XML a formato JSON (más fácil de procesar en C#)
             string jsonString = JsonConvert.SerializeXmlNode(xmlDoc);
 
-            // Convertir JSON a JObject para manipulación
+            // Convertimos el JSON a un objeto JObject para acceder fácilmente a sus propiedades
             JObject jsonObject = JObject.Parse(jsonString);
 
-            // Crear el objeto GMDix
+            // Creamos un objeto que representará información adicional para cada ítem
             JObject gmdixObject = new JObject();
             gmdixObject["version"] = new JArray("--");
 
-            // Obtener la lista de "item"
+            // Navegamos por el JSON para llegar a los items de órdenes de fabricación
             var items = jsonObject["soap-env:Envelope"]["soap-env:Body"]["n0:ZMES_GET_OFSResponse"]["ET_OFS"]["item"];
 
             int itemCount = items.Count();
 
             //Console.WriteLine("Contador de items:", itemCount);
 
-            // ****** 
+            // Creamos una lista donde se guardarán las filas que insertaremos
             List<JObject> tablaSalida = new List<JObject>();
             HashSet<string> clavesUnicas = new HashSet<string>();
             int contadorID = 1;
 
-            // Evitar combinadciones repetidas en tabvla materias
+            // Para evitar insertar combinaciones repetidas
             var combinacionesInsertadas = new HashSet<string>();
             int i_counter = 1;
-            // ******
 
-            // Eliminamos contenido de Tabla Materias
+            // Limpiamos la tabla de materiales antes de insertar nuevos datos
 
             await BBDD.EliminarTodosLosMateriales();
 
-
-
-            // Agregar el objeto GMDix a cada elemento de la lista "item"
+            // Recorremos cada item (orden de fabricación)
             for (int i = 0; i < itemCount; i++)
             {
                 var etOFSObject = jsonObject["soap-env:Envelope"]["soap-env:Body"]["n0:ZMES_GET_OFSResponse"]["ET_OFS"]["item"][i];
-                var material = etOFSObject["PLNBEZ"];
-                var itemsPuestoTrabajo = etOFSObject["OPERACIONES"]["item"];
+                var material = etOFSObject["PLNBEZ"]; // Código del material
+                var itemsPuestoTrabajo = etOFSObject["OPERACIONES"]["item"]; // Lista de puestos de trabajo
                 int ordenFabricacion = Convert.ToInt32(etOFSObject["AUFNR"]);
-
                 var Operacion = etOFSObject["OPERACIONES"];
 
-                //Console.WriteLine("Operacion:", itemsPuestoTrabajo);
-
+                // Función local para procesar cada puesto de trabajo
                 async Task ProcesarPuestoTrabajo(string puestoTrabajo)
-
                 
-                {                  
+                {
+                    // Si es un reactor, consultamos su operación desde la base de datos
                     if (puestoTrabajo == "FO111001" || puestoTrabajo == "FO111002" || puestoTrabajo == "FO112001")
                     {
                         gmdixObject["operacion"] = await BBDD.ObtenerValor($"SELECT TOP 1 operacion FROM Reactores WHERE puestoTrabajo LIKE '{puestoTrabajo}'");
@@ -256,15 +210,13 @@ namespace API_SAP.Controllers
                     string materialStr = material?.ToString();
                     string operacionStr = gmdixObject["operacion"]?.ToString();
 
-
+                    // Si el material es válido y no vacío
                     if (!string.IsNullOrEmpty(materialStr) && materialStr != "0")
                     {
-                        // Rellleno tabla materias para saber que material tengo e
+                        // Solo para Puestos de trabajo de nuestro proyecto
                         if (puestoTrabajo == "FO111001" || puestoTrabajo == "FO111002" || puestoTrabajo == "FO112001")
                         {
-
-                            // Insertamos valores en BBDD Materias
-
+                            // Si el material aún no está en la tabla, lo insertamos
                             bool materialExiste = await BBDD.ExisteMaterial(materialStr);
 
                             if (!materialExiste)
@@ -272,19 +224,16 @@ namespace API_SAP.Controllers
                                 await BBDD.InsertarMaterial(i_counter, materialStr, operacionStr, puestoTrabajo);
                                 i_counter++;
                             }
-
                         }
 
+                        // Añadimos datos adicionales a la orden
                         gmdixObject["estado"] = await BBDD.OrdenesFabricacion(ordenFabricacion);
                         gmdixObject["nombreReactor"] = await BBDD.ObtenerListadoString($"SELECT nombreReactor FROM Reactores WHERE operacion LIKE '{gmdixObject["operacion"]}'");
-                        //gmdixObject["nombreReceta"] = await BBDD.ObtenerListadoString($"SELECT nombreReceta FROM Recetas WHERE material LIKE '{material}' AND operacion LIKE '{gmdixObject["operacion"]}'");
                         gmdixObject["nombreReceta"] = await BBDD.ObtenerListadoString($"SELECT nombreReceta FROM Recetas WHERE material LIKE '{material}'");
-                        etOFSObject["GMDix"] = gmdixObject;
-
-
+                        etOFSObject["GMDix"] = gmdixObject; // Añadimos al JSON original
                     }
                     else {
-                        
+                        // Si no hay material, rellenamos con valores vacíos
                         gmdixObject["estado"] = "Vacio";
                         gmdixObject["nombreReactor"] = "Vacio";
                         gmdixObject["nombreReceta"] = "Vacio";
@@ -292,8 +241,7 @@ namespace API_SAP.Controllers
                     }
                                         
                 }
-
-
+                // Si hay varios puestos de trabajo (array), procesamos todos
                 if (itemsPuestoTrabajo is JArray itemsArray)
                 {
                     foreach (var item in itemsArray)
@@ -303,10 +251,11 @@ namespace API_SAP.Controllers
                 }
                 else
                 {
+                    // Si es solo uno, también lo procesamos
                     await ProcesarPuestoTrabajo(itemsPuestoTrabajo["ARBPL"].ToString());
                 }
 
-
+                // --- Segunda parte: evitar combinaciones repetidas ---
                 var Aux_etOFSObject = jsonObject["soap-env:Envelope"]["soap-env:Body"]["n0:ZMES_GET_OFSResponse"]["ET_OFS"]["item"][i];
                 var Aux_material = Aux_etOFSObject["PLNBEZ"]?.ToString();
                 var Aux_operacionObj = Aux_etOFSObject["OPERACIONES"];
@@ -345,48 +294,61 @@ namespace API_SAP.Controllers
                 {
 
                 }
-            
             }
-
-            //Console.WriteLine(JsonConvert.SerializeObject(tablaSalida));
-
-            // Convertir el objeto modificado a JSON
+            // Convertimos el JSON final (ya modificado con GMDix) en string
             string jsonResult = jsonObject.ToString();
 
-            //Console.WriteLine("📤 JSON final generado:");
-            //Console.WriteLine(jsonResult);
-
-            //Console.WriteLine("[$DEBUG]:FIN API RELOAD");
             return jsonResult;
 
         }
 
+        // ---------------------------------------------------------------------------------------------------------------------------
+
+        // Este endpoint se accede mediante: GET api/SAPController/obtenerVersionesReceta?receta=NombreReceta
+
         [HttpGet("obtenerVersionesReceta")]
         public async Task<String> ObtenerVersionesReceta([FromQuery] string receta)
         {
+            // 1️. Configuramos y abrimos la conexión con la base de datos SQL Server
             SQLServerManager BBDD = BBDD_Config();
 
-            var versiones = await BBDD.ObtenerListadoInt($"SELECT version FROM Recetas WHERE nombreReceta LIKE '{receta}'");
+            // 2️. Ejecutamos una consulta SQL para obtener las versiones de la receta solicitada.
+            //    - La consulta busca todas las filas en la tabla "Recetas" donde el nombre coincida
+            //    - Devuelve solo el campo "version" como una lista de enteros
+            var versiones = await BBDD.ObtenerListadoInt(
+                $"SELECT version FROM Recetas WHERE nombreReceta LIKE '{receta}'"
+            );
 
+            // 3️. Convertimos esa lista en un objeto JSON como:
+            //    { "versiones": [1, 2, 3] }
             return JsonConvert.SerializeObject(new { versiones });
         }
 
+        // ---------------------------------------------------------------------------------------------------------------------------
 
-
+        // Este método responde a solicitudes HTTP POST (aunque debería llamarse "Post", no "Put", por convención)
 
         [HttpPost]
         public async Task<IActionResult> Put(JsonElement Datos)
         {
+            // 1️. Se configura la conexión a la base de datos
             SQLServerManager BBDD = BBDD_Config();
 
+            // 2️.  Se convierte el objeto JSON recibido (en tipo JsonElement) a un JObject (estructura de datos manejable)
             JObject DatosNuevos = JsonConvert.DeserializeObject<JObject>(Datos.GetRawText());
 
-            //Console.WriteLine("Estos son los Datos");
-            //Console.WriteLine(Datos);
-            
+            // ✅ Aquí podrías mostrar los datos por consola para depuración (está comentado por ahora)
+            // Console.WriteLine("Estos son los Datos");
+            // Console.WriteLine(Datos);
+
+            // 3️.  Se llama al método para actualizar el estado en la base de datos usando los datos recibidos
             await BBDD.ActualizarEstado(DatosNuevos);
 
+            // 4️.  Devuelve una respuesta HTTP 200 OK indicando que todo fue exitoso
             return Ok();
         }
+
+        // ---------------------------------------------------------------------------------------------------------------------------
+
     }
 }
