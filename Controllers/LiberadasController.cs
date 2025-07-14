@@ -60,7 +60,7 @@ namespace API_SAP.Controllers
             // ---------------- CUANTO SE HABILITE SAP HAY QUE COMENTAR ESTAS LÍNEAS
 
             string soapResponse;
-            string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE_TEST.xml";
+            string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE.xml";
 
             // ---------------- CUANTO SE HABILITE SAP HAY QUE DESCOMENTAR ESTAS LÍNEAS
 
@@ -114,7 +114,7 @@ namespace API_SAP.Controllers
             SQLServerManager BBDD = BBDD_Config();
 
             // Ruta local del archivo XML descargado de SAP 
-            string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE_TEST.xml";
+            string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE.xml";
 
             // Crea un nuevo documento XML donde cargaremos el archivo
             XmlDocument xmlDoc = new XmlDocument();
