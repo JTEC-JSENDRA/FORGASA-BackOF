@@ -16,6 +16,7 @@ using GestionRecetas.Clases;
 using GestionRecetas.Datos;
 using System.Diagnostics;
 using System.Data.SqlClient;
+using static API_SAP.Controllers.WorkerController;
 
 
 namespace API_SAP.Controllers
@@ -166,6 +167,31 @@ namespace API_SAP.Controllers
             // Llamamos a la función que marca la orden de fabricación como finalizada,
             // pasando el número de orden (OF) y el estado recibido en el request.
             await BBDD.FinalizarOF(request.OF, request.estado);
+
+            // Devolvemos un OK (código HTTP 200) para indicar que la operación fue exitosa.
+            return Ok();
+        }
+
+        // ---------------------------------------------------------------------------------------------------------------------------
+
+        // Esta función responde a una petición POST en la ruta "Umbrales".
+        // Se usa para enviar los umbrales de error desdel front a la bbdd
+
+        [HttpPost("Umbrales")]
+        public async Task<IActionResult> PostUmbrales([FromBody] UmbralesRequest umbrales)
+        {
+            // Creamos la conexión/configuración para acceder a la base de datos.
+            SQLServerManager BBDD = BBDD_Config();
+
+            /*
+            Console.WriteLine("Umbrales recibidos:");
+            Console.WriteLine($"LC70: {umbrales.lc70}, LC80: {umbrales.lc80}");
+            Console.WriteLine($"HL26: {umbrales.hl26}, Agua: {umbrales.agua}");
+            Console.WriteLine($"Agua Recuperada: {umbrales.aguaRecuperada}, Antiespumante: {umbrales.antiespumante}");
+            Console.WriteLine($"Ligno: {umbrales.ligno}, Potasa: {umbrales.potasa}");
+            */
+            
+            await BBDD.EnviarUmbrales(umbrales);
 
             // Devolvemos un OK (código HTTP 200) para indicar que la operación fue exitosa.
             return Ok();

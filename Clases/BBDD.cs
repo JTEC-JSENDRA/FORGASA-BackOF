@@ -1212,6 +1212,51 @@ namespace API_SAP.Clases
 
         // ---------------------------------------------------------------------------------------------------------------------------
 
+        // Método asincrónico que escribe en la BBDD los umbrales de error
+        // Consulta la tabla `Umbrales`,
+
+        public async Task EnviarUmbrales(UmbralesRequest  umbrales)
+        {
+
+            // Establecemos una conexión con la base de datos utilizando el connection string
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                // Abrimos la conexión de forma asíncrona
+                await connection.OpenAsync();
+
+                // Consulta SQL para obtener todas las órdenes de fabricación registradas en MMPP_Finales
+                string query = @"
+                                UPDATE Umbrales SET
+                                    LC70 = @lc70,
+                                    LC80 = @lc80,
+                                    HL26 = @hl26,
+                                    Agua = @agua,
+                                    AguaRecuperada = @aguaRecuperada,
+                                    Antiespumante = @antiespumante,
+                                    Ligno = @ligno,
+                                    Potasa = @potasa
+                                WHERE Id = 1";  // Asumimos que esta es la única fila
+
+                // Ejecutamos la consulta
+                using (SqlCommand cmd = new SqlCommand(query, connection))
+                {
+                    cmd.Parameters.AddWithValue("@lc70", umbrales.lc70);
+                    cmd.Parameters.AddWithValue("@lc80", umbrales.lc80);
+                    cmd.Parameters.AddWithValue("@hl26", umbrales.hl26);
+                    cmd.Parameters.AddWithValue("@agua", umbrales.agua);
+                    cmd.Parameters.AddWithValue("@aguaRecuperada", umbrales.aguaRecuperada);
+                    cmd.Parameters.AddWithValue("@antiespumante", umbrales.antiespumante);
+                    cmd.Parameters.AddWithValue("@ligno", umbrales.ligno);
+                    cmd.Parameters.AddWithValue("@potasa", umbrales.potasa);
+
+                    await cmd.ExecuteNonQueryAsync();
+                }
+            }
+
+        }
+
+        // ---------------------------------------------------------------------------------------------------------------------------
+
         #region Basquevolt
         //Metodos de basquevolt
         public List<T> GetDatos<T>(string query)
