@@ -1257,6 +1257,9 @@ namespace API_SAP.Clases
 
         // ---------------------------------------------------------------------------------------------------------------------------
 
+    
+
+        //
         #region Basquevolt
         //Metodos de basquevolt
         public List<T> GetDatos<T>(string query)

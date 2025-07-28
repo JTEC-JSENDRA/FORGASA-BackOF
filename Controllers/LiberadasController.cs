@@ -11,6 +11,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using System.Reflection.PortableExecutable;
 using System.Security.Policy;
+using System.Xml.Linq;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -45,64 +46,156 @@ namespace API_SAP.Controllers
             string urlServicio = "http://SAPPRD.samca.net:8001/sap/bc/srt/rfc/sap/zmes_ws_ofs/010/zmes_ws_ofs/zmes_bn_ofs"; //datos
 
             string xmlSolicitud = @$"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:urn=""urn:sap-com:document:sap:rfc:functions"">
-                    <soapenv:Header/>
-                    <soapenv:Body>
-                        <urn:ZMES_GET_OFS>
-                            <IV_CENTRO>{Centro}</IV_CENTRO>
-                            <!--Optional:-->
-                            <IV_MATERIAL></IV_MATERIAL>
-                            <!--Optional:-->
-                            <IV_PUESTO></IV_PUESTO>
-                        </urn:ZMES_GET_OFS>
-                    </soapenv:Body>
-                </soapenv:Envelope>";
+                                    <soapenv:Header/>
+                                    <soapenv:Body>
+                                        <urn:ZMES_GET_OFS>
+                                            <IV_CENTRO>FO01</IV_CENTRO>
+                                            <!--Optional:-->
+                                            <IV_MATERIAL></IV_MATERIAL>
+                                            <!--Optional:-->
+                                            <IV_PUESTO></IV_PUESTO>
+                                        </urn:ZMES_GET_OFS>
+                                    </soapenv:Body>
+                                    </soapenv:Envelope>";
+
+
+            string soapResponse;
+            string rutaXML;
+
+            // 
+
 
             // ---------------- CUANTO SE HABILITE SAP HAY QUE COMENTAR ESTAS LÍNEAS
 
-            string soapResponse;
-            string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE.xml";
-
+            //string soapResponse;
+            //string rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE.xml";
+            //string rutaXML;
             // ---------------- CUANTO SE HABILITE SAP HAY QUE DESCOMENTAR ESTAS LÍNEAS
 
-            //// Configurar cliente HttpClient
-            //using (HttpClient httpClient = new HttpClient())
-            //{
-            //    httpClient.DefaultRequestHeaders.Add("SOAPAction", "urn:sap-com:document:sap:rfc:functions:ZMES_GET_OFS");
-            //    httpClient.DefaultRequestHeaders.Add("Accept", "text/xml");
+            // Configurar cliente HttpClient
+            using (HttpClient httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("SOAPAction", "urn:sap-com:document:sap:rfc:functions:ZMES_GET_OFS");
+                httpClient.DefaultRequestHeaders.Add("Accept", "text/xml");
 
-            //    // Configurar el contenido de la solicitud SOAP
-            //    var content = new StringContent(xmlSolicitud, Encoding.UTF8, "text/xml");
+                //string RutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE.xml";
 
-            //    // Enviar solicitud POST al servicio web SOAP
-            //    HttpResponseMessage response = await httpClient.PostAsync(urlServicio, content);
+                // Configurar el contenido de la solicitud SOAP
+                var content = new StringContent(xmlSolicitud, Encoding.UTF8, "text/xml");
 
-            //    // Leer la respuesta SOAP
-            //    soapResponse = await response.Content.ReadAsStringAsync();
+                // Enviar solicitud POST al servicio web SOAP
+                HttpResponseMessage response = await httpClient.PostAsync(urlServicio, content);
 
-            //    // Mostrar la respuesta en la consola
-            //    //Console.WriteLine("Respuesta de la API SOAP:");
-            //    //Console.WriteLine(soapResponse);
+                // Leer la respuesta SOAP
+                soapResponse = await response.Content.ReadAsStringAsync();
 
-            //    try
-            //    {
-            //        rutaXML = @"C:\ZMES_GET_OFS_RESPONSE.xml";
+                // Mostrar la respuesta en la consola
+                Console.WriteLine("Respuesta de la API SOAP:");
+                Console.WriteLine(soapResponse);
 
-            //        // Guarda el contenido XML en el archivo
-            //        System.IO.File.WriteAllText(rutaXML, soapResponse);
+                try
+                {
 
-            //        Console.WriteLine($"Archivo guardado correctamente en: {rutaXML}");
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Console.WriteLine($"Error al guardar el archivo: {ex.Message}");
-            //    }
-            //}
-            
+                    rutaXML = @"C:\Users\ZMES_GET_OFS_RESPONSE.xml";
 
-            return null;
+                    //string carpetaDestino = @"C:\Temp";
+
+                    //if (!Directory.Exists(carpetaDestino))
+                    //{
+                    //    Directory.CreateDirectory(carpetaDestino); // Crea la carpeta si no existe
+                    //}
+
+                    //rutaXML = Path.Combine(carpetaDestino, "ZMES_GET_OFS_RESPONSE.xml");
+
+                    // Guarda el contenido XML en el archivo
+                    System.IO.File.WriteAllText(rutaXML, soapResponse);
+
+                    Console.WriteLine($"Archivo guardado correctamente en: {rutaXML}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error al guardar el archivo: {ex.Message}");
+                }
+            }
+            return soapResponse;
         }
 
         // ---------------------------------------------------------------------------------------------------------------------------
+
+
+
+        [HttpGet("SAP/MMPP/{OF}")]
+        public async Task<string> Send_SAP_Confirmation(string OF)
+        {
+            // 1. Conectar con BBDD y obtener datos reales
+            SQLServerManager BBDD = BBDD_Config();
+            var MMPPFinales_SAP = await BBDD.ObtenerMMPPFinales(OF);
+
+            // 2. Validar existencia de datos
+            if (MMPPFinales_SAP == null)
+                return $"❌ No se encontraron datos de MMPP para la orden {OF}";
+
+            // 3. Formatear fecha para SAP (yyyyMMdd)
+            string fechaFormateada = MMPPFinales_SAP.FechaInsercion.ToString("yyyyMMdd");
+
+            // 4. Construir XML SOAP
+            string xmlSolicitud = @$"<soapenv:Envelope xmlns:soapenv=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:urn=""urn:sap-com:document:sap:rfc:functions"">
+                                       <soapenv:Header/>
+                                       <soapenv:Body>
+                                          <urn:ZMES_IN_NOTIF_CONSUMO>
+                                             <I_DATE>{fechaFormateada}</I_DATE>
+                                             <I_MESSAGE>00001</I_MESSAGE>
+                                             <I_RCVPRN>PROTEO</I_RCVPRN>
+                                             <I_WERKS>MY01</I_WERKS>
+                                             <I_LINEA>
+                                                <item><MATNR>000000000030061298</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Solidos_1_CR}</MENGE><MEINS>KG</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>000000000030060566</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Solidos_2_CR}</MENGE><MEINS>KG</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>000000000030061298</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Solidos_3_CR}</MENGE><MEINS>KG</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>000000000030060753</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Agua_CR}</MENGE><MEINS>L</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>000000000030080224</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Agua_Recu_CR}</MENGE><MEINS>L</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>HL PRUEBAS</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Antiespumante_CR}</MENGE><MEINS>KG</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>000000000030060518</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Ligno_CR}</MENGE><MEINS>KG</MEINS><AUFNR>{OF}</AUFNR></item>
+                                                <item><MATNR>000000000030060498</MATNR><CHARG/><LGORT/><MENGE>{MMPPFinales_SAP.Potasa_CR}</MENGE><MEINS>KG</MEINS><AUFNR>{OF}</AUFNR></item>
+                                             </I_LINEA>
+                                          </urn:ZMES_IN_NOTIF_CONSUMO>
+                                       </soapenv:Body>
+                                    </soapenv:Envelope>";
+
+            // 5. Enviar solicitud a SAP
+            string soapResponse;
+            string urlServicio = "http://prd.samca.net:8001/sap/bc/srt/rfc/sap/zmes_in_notif_consumo/010/zws_mes_in_notif_consumo/zbn_mes_in_notif_consumo";
+
+            using (HttpClient httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("SOAPAction", "urn:sap-com:document:sap:rfc:functions:ZMES_IN_NOTIF_CONSUMO");
+                httpClient.DefaultRequestHeaders.Add("Accept", "text/xml");
+
+                var content = new StringContent(xmlSolicitud, Encoding.UTF8, "text/xml");
+
+                HttpResponseMessage response = await httpClient.PostAsync(urlServicio, content);
+
+                if (!response.IsSuccessStatusCode)
+                    return $"❌ Error HTTP al llamar SAP: {response.StatusCode}";
+
+                soapResponse = await response.Content.ReadAsStringAsync();
+            }
+
+            // 6. Extraer RESULT_CODE y RESULT_TEXT (si vienen)
+            try
+            {
+                var xml = XDocument.Parse(soapResponse);
+                var resultCode = xml.Descendants().FirstOrDefault(x => x.Name.LocalName == "RESULT_CODE")?.Value;
+                var resultText = xml.Descendants().FirstOrDefault(x => x.Name.LocalName == "RESULT_TEXT")?.Value;
+
+                return $"✅ SAP RESULT: {resultCode} - {resultText}";
+            }
+            catch (Exception ex)
+            {
+                return $"⚠️ Error analizando respuesta de SAP: {ex.Message}\nRespuesta completa:\n{soapResponse}";
+            }
+        }
+
+        // -------------------
 
         // -- GET api/<SAPController>/5
         // -- Se utiliza para leer datos de producción desde un archivo XML generado por SAP
