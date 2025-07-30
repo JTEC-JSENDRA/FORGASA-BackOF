@@ -916,7 +916,7 @@ namespace API_SAP.Clases
         // Ejecuta una consulta en la tabla Recetas para obtener el ID correspondiente.
         // Retorna el ID si lo encuentra, o null si no existe la receta.
 
-        public async Task<int?> ObtenerIDReceta(string NombreReceta)
+        public async Task<int?> ObtenerIDReceta(int Version ,string NombreReceta)
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -926,13 +926,14 @@ namespace API_SAP.Clases
                 string query = @"
                         SELECT ID
                         FROM Recetas
-                        WHERE NombreReceta = @NombreReceta;
+                        WHERE NombreReceta = @NombreReceta AND Version = @Version;
                         ";
 
                 using (SqlCommand command = new SqlCommand(query, connection))
                 {
                     // Se agrega el parámetro para prevenir inyección SQL
                     command.Parameters.AddWithValue("@NombreReceta", NombreReceta);
+                    command.Parameters.AddWithValue("@Version", Version);
 
                     // Ejecutamos la consulta y obtenemos un solo valor (ID)
                     var result = await command.ExecuteScalarAsync();

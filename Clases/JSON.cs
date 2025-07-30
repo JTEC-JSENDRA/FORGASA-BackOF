@@ -51,7 +51,9 @@ namespace GestionRecetas.Clases
 
                 // Extraemos el nombre de la receta para poder buscar su ID en la base de datos
                 string nombreReceta = receta["nombreReceta"]?.ToString();
-                int? ID_Receta = await BBDD.ObtenerIDReceta(nombreReceta);
+                int versionReceta = (int)receta["version"];
+
+                int? ID_Receta = await BBDD.ObtenerIDReceta(versionReceta, nombreReceta);
 
 
                 // Recorremos todas las etapas de la receta, una por una

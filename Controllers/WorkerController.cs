@@ -48,6 +48,7 @@ namespace API_SAP.Controllers
         [HttpGet("AlgunaLanzada/{nombreReactor}")]
         public async Task<IActionResult> Get(string nombreReactor = "RC01")
         {
+            //Console.WriteLine("[DEBUG ALGUNA LANZADA]");
             // Creamos la conexión/configuración para acceder a la base de datos
             SQLServerManager BBDD = BBDD_Config();
 
